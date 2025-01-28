@@ -5,7 +5,7 @@ Setup
 ---------------------
 DigiGreen Core is experimental DigiGreen client and it builds the backbone of the network. However, it downloads and stores the entire history of DigiGreen transactions (which is currently several GBs); depending on the speed of your computer and network connection, the synchronization process can take anywhere from a few hours to a day or more.
 
-To download DigiGreen Core, visit [digigreencoin.com](https://digigreencoin.com).
+To download DigiGreen Core, visit [Github](https://github.com/lateminer/digigreen-core/releases).
 
 Running
 ---------------------
@@ -31,7 +31,7 @@ Drag DigiGreen-Core to your applications folder, and then run DigiGreen-Core.
 * See the documentation at the [Bitcoin Wiki](https://en.bitcoin.it/wiki/Main_Page)
 for help and more information.
 * Ask for help on [#dopecoin](http://webchat.freenode.net?channels=dopecoin) on Freenode. If you don't have an IRC client use [webchat here](http://webchat.freenode.net?channels=dopecoin).
-* Ask for help in DopeCoin room on Discord.
+* Ask for help in [DopeCoin room](https://discord.gg/HMCbjfp2kV) on Discord.
 * Ask for help in [/r/dopecoin/](https://nm.reddit.com/r/dopecoin/) on Reddit.
 * Ask for help on the [BitcoinTalk](https://bitcointalk.org/) forums, in the [DopeCoin topic](https://bitcointalk.org/index.php?topic=467641.new#new).
 

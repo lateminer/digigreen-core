@@ -17,5 +17,3 @@ DigiGreen Core is the original DigiGreen client and it builds the backbone of th
 However, it downloads and stores the entire history of DigiGreen transactions;
 depending on the speed of your computer and network connection, the synchronization
 process can take anywhere from a few hours to a day or more.
-
-See the DigiGreen Core website at https://digigreencoin.com for more help and information.

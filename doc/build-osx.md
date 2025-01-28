@@ -27,12 +27,12 @@ NOTE: Building with Qt4 is still supported, however, could result in a broken UI
 Build DigiGreen Core
 ------------------------
 
-1. Clone the DigiGreen source code and cd into `dopecoin-core`
+1. Clone the DigiGreen source code and cd into `digigreen-core`
 
-        git clone https://github.com/DigiGreenCoin/digigreen-core/
-        cd dopecoin-core
+        git clone https://github.com/lateminer/digigreen-core/
+        cd digigreen-core
 
-2.  Build dopecoin-core:
+2.  Build digigreen-core:
 
     Configure and build the headless DigiGreen binaries as well as the GUI (if Qt is found).
 
