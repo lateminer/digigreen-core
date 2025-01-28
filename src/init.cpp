@@ -490,8 +490,8 @@ std::string HelpMessage(HelpMessageMode mode)
 
 std::string LicenseInfo()
 {
-    const std::string URL_SOURCE_CODE = "<https://github.com/DigiGreenCoin/digigreen-core>";
-    const std::string URL_WEBSITE = "<https://digigreencoin.com>";
+    const std::string URL_SOURCE_CODE = "<https://github.com/lateminer/digigreen-core>";
+    const std::string URL_WEBSITE = "<https://github.com/lateminer/digigreen-core/releases>";
     // todo: remove urls from translations on next change
 
     // return FormatParagraph(strprintf(_("Copyright (C) %i-%i %s"), 2009, COPYRIGHT_YEAR, CopyrightHolders())) + "\n" +

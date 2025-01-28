@@ -241,7 +241,7 @@
     </message>
     <message>
         <source>Whitelisted peers cannot be DoS banned and their transactions are always relayed, even if they are already in the mempool, useful e.g. for a gateway</source>
-        <translation>dopecoin-core</translation>
+        <translation>digigreen-core</translation>
     </message>
     <message>
         <source>Information</source>
