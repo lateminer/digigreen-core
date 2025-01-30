@@ -15,6 +15,7 @@
 #include <boost/assign/list_of.hpp>
 
 #include "chainparamsseeds.h"
+#include "arith_uint256.h"
 
 using namespace std;
 
@@ -87,17 +88,9 @@ public:
         consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].nStartTime = 1199145601; // January 1, 2008
         consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].nTimeout = 1230767999; // December 31, 2008
 
-        /*
-        // Deployment of BIP68, BIP112, and BIP113.
-        consensus.vDeployments[Consensus::DEPLOYMENT_CSV].bit = 0;
-        consensus.vDeployments[Consensus::DEPLOYMENT_CSV].nStartTime = 999999999999ULL; // never
-        consensus.vDeployments[Consensus::DEPLOYMENT_CSV].nTimeout = 0;
-        */
-
         consensus.nLastPOWBlock = 750;
         consensus.nStakeTimestampMask = 0xf; // 15
         consensus.nCoinbaseMaturity = 60;
-        consensus.nStakeMinAge = 12 * 60 * 60; // 12 hours
 
         // The best chain should have at least this much work.
         consensus.nMinimumChainWork = uint256S("0x000000000000000000000000000000000000000000000449dee4a67eaffa3c69");
@@ -119,12 +112,14 @@ public:
         assert(consensus.hashGenesisBlock == uint256S("0x2acfa8ef95f8014d38217cdcecd3850e081a86976bb1bb8497f519fc1dcac3bc"));
         assert(genesis.hashMerkleRoot == uint256S("0x0e58d4b3215bb1889d5a027d40269a167b93c68e9ae28961de4717558be92d38"));
 
+        /*
         vSeeds.push_back(CDNSSeedData("dopecoin.com", "dnsseed.dopecoin.com"));
         vSeeds.push_back(CDNSSeedData("188.166.89.189", "188.166.89.189"));
         vSeeds.push_back(CDNSSeedData("37.120.190.76", "37.120.190.76"));
         vSeeds.push_back(CDNSSeedData("37.120.186.85", "37.120.186.85"));
         vSeeds.push_back(CDNSSeedData("188.68.52.172", "188.68.52.172"));
-
+        */
+        vSeeds.clear();
         base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,30);
         base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1,5);
         base58Prefixes[SECRET_KEY] = std::vector<unsigned char>(1,158);
@@ -184,17 +179,10 @@ public:
         consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].nStartTime = 1199145601; // January 1, 2008
         consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].nTimeout = 1230767999; // December 31, 2008
 
-        /*
-        // Deployment of BIP68, BIP112, and BIP113.
-        consensus.vDeployments[Consensus::DEPLOYMENT_CSV].bit = 0;
-        consensus.vDeployments[Consensus::DEPLOYMENT_CSV].nStartTime = 999999999999ULL;
-        consensus.vDeployments[Consensus::DEPLOYMENT_CSV].nTimeout = 0;
-        */
 
         consensus.nLastPOWBlock = 100;
         consensus.nStakeTimestampMask = 0xf;
         consensus.nCoinbaseMaturity = 10;
-        consensus.nStakeMinAge = 1 * 60 * 60;
         
         pchMessageStart[0] = 0xcd;
         pchMessageStart[1] = 0xf2;
@@ -269,17 +257,9 @@ public:
         // The best chain should have at least this much work.
         consensus.nMinimumChainWork = uint256S("0x00");
 
-        /*
-        // Deployment of BIP68, BIP112, and BIP113.
-        consensus.vDeployments[Consensus::DEPLOYMENT_CSV].bit = 0;
-        consensus.vDeployments[Consensus::DEPLOYMENT_CSV].nStartTime = 999999999999ULL;
-        consensus.vDeployments[Consensus::DEPLOYMENT_CSV].nTimeout = 0;
-        */
-
         consensus.nLastPOWBlock = 750;
         consensus.nStakeTimestampMask = 0xf;
         consensus.nCoinbaseMaturity = 60;
-        consensus.nStakeMinAge = 12 * 60 * 60;
         
         pchMessageStart[0] = 0xfa;
         pchMessageStart[1] = 0xbf;

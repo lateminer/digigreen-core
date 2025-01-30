@@ -107,6 +107,9 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "getmempooldescendants", 1 },
     { "reservebalance", 0},
     { "reservebalance", 1},
+    { "burn", 0 },
+    // ToDo: fix burnwallet
+    // { "burnwallet", 1 },
 };
 
 class CRPCConvertTable

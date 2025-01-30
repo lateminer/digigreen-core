@@ -1,12 +1,18 @@
 *.tar.gz
 
 *.exe
-src/digigreen
-src/digigreend
-src/digigreen-cli
-src/digigreen-tx
-src/test/test_digigreen
-src/qt/test/test_digigreen-qt
+*.pdb
+src/bitcoin
+src/bitcoind
+src/bitcoin-cli
+src/bitcoin-gui
+src/bitcoin-node
+src/bitcoin-tx
+src/bitcoin-util
+src/bitcoin-wallet
+src/test/fuzz/fuzz
+src/test/test_bitcoin
+src/qt/test/test_bitcoin-qt
 
 # autoreconf
 Makefile.in
@@ -25,6 +31,7 @@ build-aux/m4/ltversion.m4
 build-aux/missing
 build-aux/compile
 build-aux/test-driver
+config.cache
 config.log
 config.status
 configure
@@ -32,6 +39,7 @@ libtool
 src/config/bitcoin-config.h
 src/config/bitcoin-config.h.in
 src/config/stamp-h1
+src/obj
 share/setup.nsi
 share/qt/Info.plist
 
@@ -43,29 +51,39 @@ src/qt/forms/ui_*.h
 
 src/qt/test/moc*.cpp
 
+src/qt/bitcoin-qt.config
+src/qt/bitcoin-qt.creator
+src/qt/bitcoin-qt.creator.user
+src/qt/bitcoin-qt.files
+src/qt/bitcoin-qt.includes
+
 .deps
 .dirstamp
 .libs
 .*.swp
-*.*~*
+*~
 *.bak
 *.rej
 *.orig
 *.pyc
 *.o
 *.o-*
-*.patch
-.bitcoin
 *.a
 *.pb.cc
 *.pb.h
+*.dat
 
 *.log
 *.trs
 *.dmg
+*.iso
 
 *.json.h
 *.raw.h
+
+# Only ignore unexpected patches
+*.patch
+!depends/patches/**/*.patch
 
 #libtool object files
 *.lo
@@ -74,13 +92,17 @@ src/qt/test/moc*.cpp
 # Compilation and Qt preprocessor part
 *.qm
 Makefile
-digigreen-qt
-Digigreen-Qt.app
+!depends/Makefile
+src/qt/digigreen-qt
+DigiGreen-Qt.app
+background.tiff*
+
+# Qt Creator
+Makefile.am.user
 
 # Unit-tests
 Makefile.test
 digigreen-qt_test
-src/test/buildenv.py
 
 # Resources cpp
 qrc_*.cpp
@@ -89,25 +111,27 @@ qrc_*.cpp
 .DS_Store
 build
 
+# Previous releases
+releases
+
 #lcov
 *.gcno
 *.gcda
 /*.info
-test_digigreen.coverage/
+test_bitcoin.coverage/
 total.coverage/
+fuzz.coverage/
 coverage_percent.txt
+/cov_tool_wrapper.sh
+qa-assets/
 
 #build tests
 linux-coverage-build
 linux-build
 win32-build
-qa/pull-tester/run-bitcoind-for-test.sh
-qa/pull-tester/tests_config.py
-qa/pull-tester/cache/*
-qa/pull-tester/test.*/*
-qa/tmp
-cache/
-share/BitcoindComparisonTool.jar
+test/config.ini
+test/cache/*
+test/.mypy_cache/
 
 !src/leveldb*/Makefile
 
@@ -116,4 +140,46 @@ share/BitcoindComparisonTool.jar
 libbitcoinconsensus.pc
 contrib/devtools/split-debug.sh
 
-.vscode
+# Output from running db4 installation
+db4/
+
+# clang-check
+*.plist
+
+osx_volname
+dist/
+*.background.tiff
+
+/guix-build-*
+
+# Blackcoin More
+src/digigreen
+src/digigreend
+src/digigreen-cli
+src/digigreen-tx
+src/test/test_digigreen
+src/qt/digigreen-qt_test
+src/qt/test/test_digigreen-qt
+qa/pull-tester/run-bitcoind-for-test.sh
+qa/pull-tester/tests_config.py
+
+
+#Visual Studio
+.vscode/*
+.vs/*
+
+# Output from running db6 installation
+db6/
+
+# Unit-tests
+
+src/test/buildenv.py
+
+# Compilation and Qt preprocessor part
+src/qt/digigreen-qt
+DigiGreen-Qt.app
+src/qt/digigreen-qt.config
+src/qt/digigreen-qt.creator
+src/qt/digigreen-qt.creator.user
+src/qt/digigreen-qt.files
+src/qt/digigreen-qt.includes

@@ -3,6 +3,9 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+// getstakereport RPC by Navcoin
+// Copyright (c) 2017-2019 The Navcoin developers
+
 #include "amount.h"
 #include "chain.h"
 #include "core_io.h"
@@ -10,6 +13,7 @@
 #include "init.h"
 #include "main.h"
 #include "net.h"
+#include "pos.h"
 #include "rpc/server.h"
 #include "timedata.h"
 #include "util.h"
@@ -26,6 +30,7 @@
 using namespace std;
 
 int64_t nWalletUnlockTime;
+int64_t nWalletFirstStakeTime = -1;
 static CCriticalSection cs_nWalletUnlockTime;
 
 static void accountingDeprecationCheck()
@@ -345,9 +350,7 @@ UniValue getaddressesbyaccount(const UniValue& params, bool fHelp)
     return ret;
 }
 
-
-
-static void SendMoney(const CTxDestination &address, CAmount nValue, bool fSubtractFeeFromAmount, CWalletTx& wtxNew)
+static void SendMoneyToScript(const CScript scriptPubKey, CAmount nValue, bool fSubtractFeeFromAmount, CWalletTx& wtxNew)
 {
     CAmount curBalance = pwalletMain->GetBalance();
 
@@ -364,9 +367,6 @@ static void SendMoney(const CTxDestination &address, CAmount nValue, bool fSubtr
             throw JSONRPCError(RPC_WALLET_ERROR, strError);
     }
 
-    // Parse Bitcoin address
-    CScript scriptPubKey = GetScriptForDestination(address);
-
     // Create and send the transaction
     CReserveKey reservekey(pwalletMain);
     CAmount nFeeRequired;
@@ -382,6 +382,14 @@ static void SendMoney(const CTxDestination &address, CAmount nValue, bool fSubtr
     }
     if (!pwalletMain->CommitTransaction(wtxNew, reservekey))
         throw JSONRPCError(RPC_WALLET_ERROR, "Error: The transaction was rejected! This might happen if some of the coins in your wallet were already spent, such as if you used a copy of the wallet and coins were spent in the copy but not marked as spent here.");
+}
+
+static void SendMoney(const CTxDestination &address, CAmount nValue, bool fSubtractFeeFromAmount, CWalletTx& wtxNew)
+{
+    // Parse Bitcoin address
+    CScript scriptPubKey = GetScriptForDestination(address);
+
+    SendMoneyToScript(scriptPubKey, nValue, fSubtractFeeFromAmount, wtxNew);
 }
 
 UniValue sendtoaddress(const UniValue& params, bool fHelp)
@@ -2048,7 +2056,7 @@ UniValue encryptwallet(const UniValue& params, bool fHelp)
     // slack space in .dat files; that is bad if the old data is
     // unencrypted private keys. So:
     StartShutdown();
-    return "wallet encrypted; digigreen server stopping, restart to run with encrypted wallet. The keypool has been flushed and a new HD seed was generated (if you are using HD). You need to make a new backup.";
+    return "wallet encrypted; DigiGreen server stopping, restart to run with encrypted wallet. The keypool has been flushed and a new HD seed was generated (if you are using HD). You need to make a new backup.";
 }
 
 UniValue reservebalance(const UniValue& params, bool fHelp)
@@ -2291,7 +2299,6 @@ UniValue getwalletinfo(const UniValue& params, bool fHelp)
     obj.push_back(Pair("staked_balance",      ValueFromAmount(pwalletMain->GetStake())));
     obj.push_back(Pair("unconfirmed_balance", ValueFromAmount(pwalletMain->GetUnconfirmedBalance())));
     obj.push_back(Pair("immature_balance",    ValueFromAmount(pwalletMain->GetImmatureBalance())));
-    obj.push_back(Pair("stake",         ValueFromAmount(pwalletMain->GetStake())));
     obj.push_back(Pair("txcount",       (int)pwalletMain->mapWallet.size()));
     obj.push_back(Pair("keypoololdest", pwalletMain->GetOldestKeyPoolTime()));
     obj.push_back(Pair("keypoolsize",   (int)pwalletMain->GetKeyPoolSize()));
@@ -2569,6 +2576,346 @@ UniValue fundrawtransaction(const UniValue& params, bool fHelp)
     return result;
 }
 
+UniValue burn(const UniValue& params, bool fHelp)
+{
+    if (fHelp || params.size() < 1 || params.size() > 2)
+        throw runtime_error(
+            "burn <amount> [hex string]\n"
+            "<amount> is a real and is rounded to the nearest 0.00000001"
+            + HelpRequiringPassphrase());
+
+    CScript scriptPubKey;
+
+    if (params.size() > 1) {
+        vector<unsigned char> data;
+        if (params[1].get_str().size() > 0){
+            data = ParseHexV(params[1], "data");
+        } else {
+            // Empty data is valid
+        }
+        scriptPubKey = CScript() << OP_RETURN << data;
+    } else {
+        scriptPubKey = CScript() << OP_RETURN;
+    }
+
+    CAmount nAmount = AmountFromValue(params[0], true);
+    CWalletTx wtx;
+
+    EnsureWalletIsUnlocked();
+
+    SendMoneyToScript(scriptPubKey, nAmount, false, wtx);
+
+    return wtx.GetHash().GetHex();
+}
+
+// ///////////////////////////////////////////////////////////////////// ** em52
+//  new rpc added by Remy5
+
+struct StakePeriodRange_T {
+    int64_t Start;
+    int64_t End;
+    int64_t Total;
+    int Count;
+    std::string Name;
+};
+
+typedef std::vector<StakePeriodRange_T> vStakePeriodRange_T;
+
+// Check if we have a Tx that can be counted in staking report
+bool IsTxCountedAsStaked(const CWalletTx* tx)
+{
+    // Make sure we have a lock
+    LOCK(cs_main);
+
+    // orphan block or immature
+    if ((!tx->GetDepthInMainChain()) || (tx->GetBlocksToMaturity() > 0) || !tx->IsInMainChain())
+        return false;
+
+    // abandoned transactions
+    if (tx->isAbandoned())
+        return false;
+
+    // transaction other than POS block
+    return tx->IsCoinStake();
+}
+
+// Get the amount for a staked tx used in staking report
+CAmount GetTxStakeAmount(const CWalletTx* tx)
+{
+    // use the cached amount if available
+    if (tx->fCreditCached  && tx->fDebitCached )
+        return tx->nCreditCached - tx->nDebitCached;
+    // Check for cold staking
+   // else if (tx->vout[1].scriptPubKey.IsColdStaking() || tx->vout[1].scriptPubKey.IsColdStakingv2())
+        //return tx->GetCredit(pwalletMain->IsMine(tx->vout[1])) - tx->GetDebit(pwalletMain->IsMine(tx->vout[1]));
+
+    return tx->GetCredit(ISMINE_SPENDABLE) - tx->GetDebit(ISMINE_SPENDABLE) ;
+}
+
+// Gets timestamp for first stake
+// Returns -1 (Zero) if has not staked yet
+int64_t GetFirstStakeTime()
+{
+    // Check if we already know when
+    if (nWalletFirstStakeTime > 0)
+        return nWalletFirstStakeTime;
+
+    // Need a pointer for the tx
+    const CWalletTx* tx;
+
+    // scan the entire wallet transactions
+    for (auto& it : pwalletMain->wtxOrdered) {
+        tx = it.second.first;
+
+        // Check if we have a useable tx
+        if (IsTxCountedAsStaked(tx)) {
+            nWalletFirstStakeTime = tx->GetTxTime(); // Save it for later use
+            return nWalletFirstStakeTime;
+        }
+    }
+
+    // Did not find the first stake
+    return nWalletFirstStakeTime;
+}
+
+// **em52: Get total coins staked on given period
+// inspired from CWallet::GetStake()
+// Parameter aRange = Vector with given limit date, and result
+// return int =  Number of Wallet's elements analyzed
+int GetsStakeSubTotal(vStakePeriodRange_T& aRange)
+{
+    // Lock cs_main before we try to call GetTxStakeAmount
+    LOCK(cs_main);
+
+    int nElement = 0;
+    int64_t nAmount = 0;
+
+    const CWalletTx* pcoin;
+
+    vStakePeriodRange_T::iterator vIt;
+
+    // scan the entire wallet transactions
+    for (map<uint256, CWalletTx>::const_iterator it = pwalletMain->mapWallet.begin();
+         it != pwalletMain->mapWallet.end();
+         ++it) {
+        pcoin = &(*it).second;
+
+        // Check if we have a useable tx
+        if (!IsTxCountedAsStaked(pcoin))
+            continue;
+
+        nElement++;
+
+        // Get the stake tx amount from pcoin
+        nAmount = GetTxStakeAmount(pcoin);
+
+        // scan the range
+        for (vIt = aRange.begin(); vIt != aRange.end(); vIt++) {
+            if (pcoin->GetTxTime() >= vIt->Start) {
+                if (!vIt->End) { // Manage Special case
+                    vIt->Start = pcoin->GetTxTime();
+                    vIt->Total = nAmount;
+                } else if (pcoin->GetTxTime() <= vIt->End) {
+                    vIt->Count++;
+                    vIt->Total += nAmount;
+                }
+            }
+        }
+    }
+
+    return nElement;
+}
+
+// prepare range for stake report
+vStakePeriodRange_T PrepareRangeForStakeReport()
+{
+    vStakePeriodRange_T aRange;
+    StakePeriodRange_T x;
+
+
+    int64_t n1Hour = 60 * 60;
+    int64_t n1Day = 24 * n1Hour;
+
+    int64_t nToday = GetTime();
+    time_t CurTime = nToday;
+    auto localTime = boost::posix_time::second_clock::local_time();
+    struct tm Loc_MidNight = boost::posix_time::to_tm(localTime);
+
+    Loc_MidNight.tm_hour = 0;
+    Loc_MidNight.tm_min = 0;
+    Loc_MidNight.tm_sec = 0; // set midnight
+
+    x.Start = mktime(&Loc_MidNight);
+    x.End = nToday;
+    x.Count = 0;
+    x.Total = 0;
+
+    // prepare last single 30 day Range
+    for (int i = 0; i < 30; i++) {
+        x.Name = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", x.Start);
+
+        aRange.push_back(x);
+
+        x.End = x.Start - 1;
+        x.Start -= n1Day;
+    }
+
+    // prepare subtotal range of last 24H, 1 week, 30 days, 1 years
+    int GroupDays[5][2] = {{1, 0}, {7, 0}, {30, 0}, {365, 0}, {99999999, 0}};
+    std::string sGroupName[] = {"24H", "7 Days", "30 Days", "365 Days", "All"};
+
+    nToday = GetTime();
+
+    for (int i = 0; i < 5; i++) {
+        x.Start = nToday - GroupDays[i][0] * n1Day;
+        x.End = nToday - GroupDays[i][1] * n1Day;
+        x.Name = "Last " + sGroupName[i];
+
+        aRange.push_back(x);
+    }
+
+    // Special case. not a subtotal, but last stake
+    x.End = 0;
+    x.Start = 0;
+    x.Name = "Latest Stake";
+    aRange.push_back(x);
+
+    return aRange;
+}
+
+
+// getstakereport: return SubTotal of the staked coin in last 24H, 7 days, etc.. of all owns address
+UniValue getstakereport(const UniValue& params, bool fHelp)
+{
+    if ((params.size() > 0) || (fHelp))
+        throw runtime_error(
+            "getstakereport\n"
+            "List last single 30 day stake subtotal and last 24h, 7, 30, 365 day subtotal.\n");
+
+    vStakePeriodRange_T aRange = PrepareRangeForStakeReport();
+
+    LOCK(cs_main);
+
+    // get subtotal calc
+    int64_t nTook = GetTimeMillis();
+    int nItemCounted = GetsStakeSubTotal(aRange);
+
+    UniValue result(UniValue::VOBJ);
+
+    vStakePeriodRange_T::iterator vIt;
+
+    // Span of days to compute average over
+    int nDays = 0;
+
+    // Get the wallet's staking age in days
+    int nWalletDays = 0;
+
+    // Check if we have a stake already
+    if (GetFirstStakeTime() != -1)
+        nWalletDays = (GetTime() - GetFirstStakeTime()) / 86400;
+
+    // report it
+    for (vIt = aRange.begin(); vIt != aRange.end(); vIt++) {
+        // Add it to results
+        result.pushKV(vIt->Name, FormatMoney(vIt->Total).c_str());
+
+        // Get the nDays value
+        nDays = 0;
+        if (vIt->Name == "Last 7 Days")
+            nDays = 7;
+        else if (vIt->Name == "Last 30 Days")
+            nDays = 30;
+        else if (vIt->Name == "Last 365 Days")
+            nDays = 365;
+
+        // Check if we need to add the average
+        if (nDays > 0) {
+            // Check if nDays is larger than the wallet's staking age in days
+            if (nDays > nWalletDays && nWalletDays > 0)
+                nDays = nWalletDays;
+
+            // Add the Average
+            result.pushKV(vIt->Name + " Avg", FormatMoney(vIt->Total / nDays).c_str());
+        }
+    }
+
+    vIt--;
+    result.pushKV("Latest Time",
+        vIt->Start ? DateTimeStrFormat("%Y-%m-%d %H:%M:%S", vIt->Start).c_str() :
+                     "Never");
+
+    // Moved nTook call down here to be more accurate
+    nTook = GetTimeMillis() - nTook;
+
+    // report element counted / time took
+    result.pushKV("Stake counted", nItemCounted);
+    result.pushKV("time took (ms)", nTook);
+
+    return result;
+}
+
+/*
+// ToDo: fix burnwallet
+
+UniValue burnwallet(const UniValue& params, bool fHelp)
+{
+    if (fHelp || params.size() < 1 || params.size() > 2)
+        throw runtime_error(
+            "burnwallet [hex string] [force]"
+            + HelpRequiringPassphrase());
+
+    CScript scriptPubKey;
+
+    if (params.size() > 0) {
+        vector<unsigned char> data;
+        if (params[0].get_str().size() > 0){
+            data = ParseHexV(params[0], "data");
+        } else {
+            // Empty data is valid
+        }
+        scriptPubKey = CScript() << OP_RETURN << data;
+    } else {
+        scriptPubKey = CScript() << OP_RETURN;
+    }
+
+    bool fForce = false;
+    if (params.size() > 1)
+        fForce = params[1].get_bool();
+
+    EnsureWalletIsUnlocked();
+
+    if (!fForce) {
+        if (scriptPubKey.size() <= 32)
+            throw JSONRPCError(RPC_WALLET_ERROR, "Warning: small data");
+        if (pwalletMain->GetUnconfirmedBalance() != 0)
+            throw JSONRPCError(RPC_WALLET_ERROR, "Warning: unconfirmed balance != 0");
+        if (pwalletMain->GetImmatureBalance() != 0)
+            throw JSONRPCError(RPC_WALLET_ERROR, "Warning: immature balance != 0");
+        if (pwalletMain->GetStake() != 0)
+            throw JSONRPCError(RPC_WALLET_ERROR, "Warning: stake balance != 0");
+    }
+
+    CAmount nAmount = pwalletMain->GetBalance();
+    std::vector<CRecipient> vecSend;
+    CRecipient recipient = {scriptPubKey, nAmount, false};
+    vecSend.push_back(recipient);
+    CWalletTx wtx;
+    CReserveKey keyChange(pwalletMain);
+    CAmount nFeeRequired = 0;
+    int nChangePosRet = -1;
+    std::string strError;
+    pwalletMain->CreateTransaction(vecSend, wtx, keyChange, nFeeRequired, nChangePosRet, strError);
+    vecSend[0].nAmount -= nFeeRequired;
+    if (!pwalletMain->CreateTransaction(vecSend, wtx, keyChange, nFeeRequired, nChangePosRet, strError))
+        throw JSONRPCError(RPC_WALLET_ERROR, "Transaction creation failed");
+
+    if (!pwalletMain->CommitTransaction(wtx, keyChange))
+        throw JSONRPCError(RPC_WALLET_ERROR, "Transaction commit failed");
+
+    return wtx.GetHash().GetHex();
+}
+*/
+
 extern UniValue abortrescan(const UniValue& params, bool fHelp); // in rpcdump.cpp
 extern UniValue dumpprivkey(const UniValue& params, bool fHelp); // in rpcdump.cpp
 extern UniValue importprivkey(const UniValue& params, bool fHelp);
@@ -2599,6 +2946,7 @@ static const CRPCCommand commands[] =
     { "wallet",             "getrawchangeaddress",      &getrawchangeaddress,      true  },
     { "wallet",             "getreceivedbyaccount",     &getreceivedbyaccount,     false },
     { "wallet",             "getreceivedbyaddress",     &getreceivedbyaddress,     false },
+    { "wallet",             "getstakereport",           &getstakereport,           false },
     { "wallet",             "gettransaction",           &gettransaction,           false },
     { "wallet",             "getunconfirmedbalance",    &getunconfirmedbalance,    false },
     { "wallet",             "getwalletinfo",            &getwalletinfo,            false },
@@ -2629,6 +2977,9 @@ static const CRPCCommand commands[] =
     { "wallet",             "walletpassphrasechange",   &walletpassphrasechange,   true  },
     { "wallet",             "walletpassphrase",         &walletpassphrase,         true  },
     { "wallet",             "removeprunedfunds",        &removeprunedfunds,        true  },
+    { "wallet",             "burn",                     &burn,                     false },
+    // ToDo: fix burnwallet
+    // { "wallet",             "burnwallet",               &burnwallet,               false },
 };
 
 void RegisterWalletRPCCommands(CRPCTable &tableRPC)

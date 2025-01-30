@@ -2,8 +2,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "cashaddr.h"
-#include "bench.h"
+#include <cashaddr.h>
+#include <bench/bench.h>
 
 #include <string>
 #include <vector>
@@ -14,17 +14,17 @@ static void CashAddrEncode(benchmark::State &state) {
                                    139, 2,  215, 100, 91,  38,  11,  141,
                                    253, 40, 117, 21,  16,  90,  200, 24};
     while (state.KeepRunning()) {
-        cashaddr::Encode("digigreen", buffer);
+        cashaddr::Encode("blackcoin", buffer);
     }
 }
 
 static void CashAddrDecode(benchmark::State &state) {
     const char *addrWithPrefix =
-        "digigreen:qprnwmr02d7ky9m693qufj5mgkpf4wvssv0w86tkjd";
+        "blackcoin:qprnwmr02d7ky9m693qufj5mgkpf4wvssv0w86tkjd";
     const char *addrNoPrefix = "qprnwmr02d7ky9m693qufj5mgkpf4wvssv0w86tkjd";
     while (state.KeepRunning()) {
-        cashaddr::Decode(addrWithPrefix, "digigreen");
-        cashaddr::Decode(addrNoPrefix, "digigreen");
+        cashaddr::Decode(addrWithPrefix, "blackcoin");
+        cashaddr::Decode(addrNoPrefix, "blackcoin");
     }
 }
 
