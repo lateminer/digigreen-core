@@ -30,8 +30,8 @@ SplashScreen::SplashScreen(Qt::WindowFlags f, const NetworkStyle *networkStyle) 
     QWidget(0, f), curAlignment(0)
 {
     // set reference point, paddings
-    int paddingTop              = 415;
-    int titleCopyrightVSpace    = 20;
+    int paddingTop              = 380;
+    int titleCopyrightVSpace    = 36;
 
     float fontFactor            = 1.0;
     float devicePixelRatio      = 1.0;
@@ -48,7 +48,7 @@ SplashScreen::SplashScreen(Qt::WindowFlags f, const NetworkStyle *networkStyle) 
     QString font            = QApplication::font().toString();
 
     // create a bitmap according to device pixelratio
-    QSize splashSize(480*devicePixelRatio,485*devicePixelRatio);
+    QSize splashSize(650*devicePixelRatio,485*devicePixelRatio);
     pixmap = QPixmap(splashSize);
 
 #if QT_VERSION > 0x050100
@@ -62,7 +62,7 @@ SplashScreen::SplashScreen(Qt::WindowFlags f, const NetworkStyle *networkStyle) 
     // draw a splash screen
     QRect rRect(QPoint(0,0), splashSize);
     pixPaint.fillRect(rRect, QColor(255,255,255));
-    QRect rSplash(QPoint(0,-20), QSize(478,441));
+    QRect rSplash(QPoint(80,-20), QSize(478,441));
     QPixmap newPixmap;
     newPixmap = QPixmap(":/images/splash");
     pixPaint.drawPixmap(rSplash, newPixmap);
