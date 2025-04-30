@@ -30,6 +30,11 @@ Coin Specifications
 Builds
 ----------------
 
+v4.2.1.0:
+
+- Updated to Blackcoin More v2.13.2.9-e07507d09
+- Updated seed nodes, website and GitHub links
+
 v4.2.0.0:
 
 - Rebranded as DigiGreen
